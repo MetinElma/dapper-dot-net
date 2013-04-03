@@ -48,14 +48,29 @@ namespace Dapper
             /// <summary>
             /// Insert a row into the db
             /// </summary>
-            /// <param name="data">Either DynamicParameters or an anonymous type or concrete type</param>
+            /// <param name="data">Either DynamicParameters or an anonymous type or concrete type. "Id" is assumed as the name of the primary key column.</param>
             /// <returns></returns>
             public virtual int? Insert(dynamic data)
             {
+                return Insert("Id", data);
+            }
+
+            /// <summary>
+            /// Insert a row into the db. Use this method if the name of the primary key column is not "Id".
+            /// </summary>
+            /// <param name="data">Either DynamicParameters or an anonymous type or concrete type</param>
+            /// <param name="idName">Name of the Primary Key Column</param>
+            /// <returns></returns>
+            public virtual int? Insert(string idName, dynamic data)
+            {
                 var o = (object)data;
                 List<string> paramNames = GetParamNames(o);
-                paramNames.Remove("Id");
-
+                paramNames.Remove(idName);
+                //Nothing to insert if there are no parameters. (This is the case when the given data is empty.)
+                if (paramNames.Count() == 0)
+                {
+                    return null;
+                }
                 string cols = string.Join(",", paramNames);
                 string cols_params = string.Join(",", paramNames.Select(p => "@" + p));
                 var sql = "set nocount on insert " + TableName + " (" + cols + ") values (" + cols_params + ") select cast(scope_identity() as int)";
@@ -64,44 +79,81 @@ namespace Dapper
             }
 
             /// <summary>
-            /// Update a record in the DB
+            /// Update a record in the DB. "Id" is assumed as the name of the primary key column.
             /// </summary>
             /// <param name="id"></param>
             /// <param name="data"></param>
             /// <returns></returns>
             public int Update(TId id, dynamic data)
             {
-                List<string> paramNames = GetParamNames((object)data);
+                return Update("Id", id, data);
+            }
 
+            /// <summary>
+            /// Update a record in the DB. Use this method if the name of the primary key column is not "Id".
+            /// </summary>
+            /// <param name="idName">Name of the Primary Key Column</param>
+            /// <param name="id"></param>
+            /// <param name="data"></param>
+            /// <returns></returns>
+            public int Update(string idName, TId id, dynamic data)
+            {
+                List<string> paramNames = GetParamNames((object)data);
+                var paramNamesWithoutPrimaryKey = paramNames.Where(n => n != idName).Select(p => p + "= @" + p);
+                if (paramNamesWithoutPrimaryKey.Count() == 0)
+                {
+                    return 0;
+                }
                 var builder = new StringBuilder();
                 builder.Append("update ").Append(TableName).Append(" set ");
-                builder.AppendLine(string.Join(",", paramNames.Where(n => n != "Id").Select(p => p + "= @" + p)));
-                builder.Append("where Id = @Id");
+                builder.AppendLine(string.Join(",", paramNamesWithoutPrimaryKey));
+                builder.Append("where " + idName + " = @" + idName);
 
                 DynamicParameters parameters = new DynamicParameters(data);
-                parameters.Add("Id", id);
-
+                parameters.Add(idName, id);
                 return database.Execute(builder.ToString(), parameters);
             }
 
             /// <summary>
-            /// Delete a record for the DB
+            /// Delete a record for the DB. "Id" is assumed as the name of the primary key column.
             /// </summary>
             /// <param name="id"></param>
             /// <returns></returns>
             public bool Delete(TId id)
             {
-                return database.Execute("delete from " + TableName + " where Id = @id", new { id }) > 0;
+                return Delete("Id", id);
             }
 
             /// <summary>
-            /// Grab a record with a particular Id from the DB 
+            /// Delete a record for the DB. Use this method if the name of the primary key column is not "Id".
+            /// </summary>
+            /// <param name="idName">Name of the Primary Key Column</param>
+            /// <param name="id"></param>
+            /// <returns></returns>
+            public bool Delete(string idName, TId id)
+            {
+                return database.Execute("delete from " + TableName + " where " + idName + " = @tid", new { tid = id }) > 0;
+            }
+
+            /// <summary>
+            /// Grab a record with a particular Id from the DB . "Id" is assumed as the name of the primary key column.
             /// </summary>
             /// <param name="id"></param>
             /// <returns></returns>
             public T Get(TId id)
             {
-                return database.Query<T>("select * from " + TableName + " where Id = @id", new { id }).FirstOrDefault();
+                return Get("Id", id);
+            }
+
+            /// <summary>
+            /// Grab a record with a particular Id from the DB. Use this method if the name of the primary key column is not "Id".
+            /// </summary>
+            /// <param name="idName">Name of the Primary Key Column</param>
+            /// <param name="id"></param>
+            /// <returns></returns>
+            public T Get(string idName, TId id)
+            {
+                return database.Query<T>("select * from " + TableName + " where " + idName + " = @tid", new { tid = id }).FirstOrDefault();
             }
 
             public virtual T First()
@@ -137,12 +189,13 @@ namespace Dapper
             }
         }
 
-		public class Table<T> : Table<T, int> {
-			public Table(Database<TDatabase> database, string likelyTableName)
-				: base(database, likelyTableName)
-			{
-			}
-		}
+        public class Table<T> : Table<T, int>
+        {
+            public Table(Database<TDatabase> database, string likelyTableName)
+                : base(database, likelyTableName)
+            {
+            }
+        }
 
         DbConnection connection;
         int commandTimeout;
@@ -263,7 +316,7 @@ namespace Dapper
             name = name.Replace("[", "");
             name = name.Replace("]", "");
 
-            if(name.Contains("."))
+            if (name.Contains("."))
             {
                 var parts = name.Split('.');
                 if (parts.Count() == 2)
