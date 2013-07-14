@@ -29,7 +29,14 @@ namespace Dapper
             internal Database<TDatabase> database;
             internal string tableName;
             internal string likelyTableName;
+            private string _IdColumn = "Id";
 
+            public string IdColumn
+            {
+                get { return _IdColumn; }
+                set { _IdColumn = value; }
+            }
+            
             public Table(Database<TDatabase> database, string likelyTableName)
             {
                 this.database = database;
@@ -52,7 +59,8 @@ namespace Dapper
             /// <returns></returns>
             public virtual int? Insert(dynamic data)
             {
-                return Insert("Id", data);
+                //return Insert("Id", data);
+                return Insert(IdColumn, data);
             }
 
             /// <summary>
@@ -86,7 +94,8 @@ namespace Dapper
             /// <returns></returns>
             public int Update(TId id, dynamic data)
             {
-                return Update("Id", id, data);
+                //return Update("Id", id, data);
+                return Update(IdColumn, id, data);
             }
 
             /// <summary>
@@ -121,7 +130,8 @@ namespace Dapper
             /// <returns></returns>
             public bool Delete(TId id)
             {
-                return Delete("Id", id);
+                //return Delete("Id", id);
+                return Delete(IdColumn, id);
             }
 
             /// <summary>
@@ -142,7 +152,8 @@ namespace Dapper
             /// <returns></returns>
             public T Get(TId id)
             {
-                return Get("Id", id);
+                //return Get("Id", id);
+                return Get(IdColumn, id);
             }
 
             /// <summary>
