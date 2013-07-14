@@ -41,6 +41,19 @@ namespace Dapper
         }
 
         /// <summary>
+        /// Implement this interface to pass an arbitrary db specific parameter to Dapper
+        /// </summary>
+        public interface ICustomQueryParameter
+        {
+            /// <summary>
+            /// Add the parameter needed to the command before it executes
+            /// </summary>
+            /// <param name="command">The raw command prior to execution</param>
+            /// <param name="name">Parameter name</param>
+            void AddParameter(IDbCommand command, string name);
+        }
+
+        /// <summary>
         /// Implement this interface to change default mapping of reader columns to type memebers
         /// </summary>
         public interface ITypeMap
@@ -494,7 +507,7 @@ namespace Dapper
                             hashCode = hashCode * 23 + (t == null ? 0 : t.GetHashCode());
                         }
                     }
-                    hashCode = hashCode * 23 + (connectionString == null ? 0 : connectionString.GetHashCode());
+                    hashCode = hashCode * 23 + (connectionString == null ? 0 : SqlMapper.connectionStringComparer.GetHashCode(connectionString));
                     hashCode = hashCode * 23 + (parametersType == null ? 0 : parametersType.GetHashCode());
                 }
             }
@@ -554,7 +567,7 @@ namespace Dapper
                     type == other.type &&
                     sql == other.sql &&
                     commandType == other.commandType &&
-                    connectionString == other.connectionString &&
+                    SqlMapper.connectionStringComparer.Equals(connectionString, other.connectionString) &&
                     parametersType == other.parametersType;
             }
         }
@@ -902,7 +915,7 @@ this IDbConnection cnn, string sql, Func<TFirst, TSecond, TReturn> map, dynamic 
 #endif
 )
         {
-            return MultiMap<TFirst, TSecond, DontMap, DontMap, DontMap, TReturn>(cnn, sql, map, param as object, transaction, buffered, splitOn, commandTimeout, commandType);
+            return MultiMap<TFirst, TSecond, DontMap, DontMap, DontMap, DontMap, DontMap, TReturn>(cnn, sql, map, param as object, transaction, buffered, splitOn, commandTimeout, commandType);
         }
 
         /// <summary>
@@ -930,7 +943,7 @@ this IDbConnection cnn, string sql, Func<TFirst, TSecond, TThird, TReturn> map, 
 #endif
 )
         {
-            return MultiMap<TFirst, TSecond, TThird, DontMap, DontMap, TReturn>(cnn, sql, map, param as object, transaction, buffered, splitOn, commandTimeout, commandType);
+            return MultiMap<TFirst, TSecond, TThird, DontMap, DontMap, DontMap, DontMap, TReturn>(cnn, sql, map, param as object, transaction, buffered, splitOn, commandTimeout, commandType);
         }
 
         /// <summary>
@@ -959,8 +972,9 @@ this IDbConnection cnn, string sql, Func<TFirst, TSecond, TThird, TFourth, TRetu
 #endif
 )
         {
-            return MultiMap<TFirst, TSecond, TThird, TFourth, DontMap, TReturn>(cnn, sql, map, param as object, transaction, buffered, splitOn, commandTimeout, commandType);
+            return MultiMap<TFirst, TSecond, TThird, TFourth, DontMap, DontMap, DontMap, TReturn>(cnn, sql, map, param as object, transaction, buffered, splitOn, commandTimeout, commandType);
         }
+
 #if !CSHARP30
         /// <summary>
         /// Perform a multi mapping query with 5 input parameters
@@ -981,33 +995,91 @@ this IDbConnection cnn, string sql, Func<TFirst, TSecond, TThird, TFourth, TRetu
         /// <param name="commandTimeout"></param>
         /// <param name="commandType"></param>
         /// <returns></returns>
-        public static IEnumerable<TReturn> Query<TFirst, TSecond, TThird, TFourth, TFifth, TReturn>(this IDbConnection cnn, string sql, Func<TFirst, TSecond, TThird, TFourth, TFifth, TReturn> map, dynamic param = null, IDbTransaction transaction = null, bool buffered = true, string splitOn = "Id", int? commandTimeout = null, CommandType? commandType = null)
+        public static IEnumerable<TReturn> Query<TFirst, TSecond, TThird, TFourth, TFifth, TReturn>(
+            this IDbConnection cnn, string sql, Func<TFirst, TSecond, TThird, TFourth, TFifth, TReturn> map, dynamic param = null, IDbTransaction transaction = null, bool buffered = true, string splitOn = "Id", int? commandTimeout = null, CommandType? commandType = null
+)
         {
-            return MultiMap<TFirst, TSecond, TThird, TFourth, TFifth, TReturn>(cnn, sql, map, param as object, transaction, buffered, splitOn, commandTimeout, commandType);
+            return MultiMap<TFirst, TSecond, TThird, TFourth, TFifth, DontMap, DontMap, TReturn>(cnn, sql, map, param as object, transaction, buffered, splitOn, commandTimeout, commandType);
+        }
+
+        /// <summary>
+        /// Perform a multi mapping query with 6 input parameters
+        /// </summary>
+        /// <typeparam name="TFirst"></typeparam>
+        /// <typeparam name="TSecond"></typeparam>
+        /// <typeparam name="TThird"></typeparam>
+        /// <typeparam name="TFourth"></typeparam>
+        /// <typeparam name="TFifth"></typeparam>
+        /// <typeparam name="TSixth"></typeparam>
+        /// <typeparam name="TReturn"></typeparam>
+        /// <param name="cnn"></param>
+        /// <param name="sql"></param>
+        /// <param name="map"></param>
+        /// <param name="param"></param>
+        /// <param name="transaction"></param>
+        /// <param name="buffered"></param>
+        /// <param name="splitOn"></param>
+        /// <param name="commandTimeout"></param>
+        /// <param name="commandType"></param>
+        /// <returns></returns>
+        public static IEnumerable<TReturn> Query<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TReturn>(
+            this IDbConnection cnn, string sql, Func<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TReturn> map, dynamic param = null, IDbTransaction transaction = null, bool buffered = true, string splitOn = "Id", int? commandTimeout = null, CommandType? commandType = null
+)
+        {
+            return MultiMap<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, DontMap, TReturn>(cnn, sql, map, param as object, transaction, buffered, splitOn, commandTimeout, commandType);
+        }
+
+
+        /// <summary>
+        /// Perform a multi mapping query with 7 input parameters
+        /// </summary>
+        /// <typeparam name="TFirst"></typeparam>
+        /// <typeparam name="TSecond"></typeparam>
+        /// <typeparam name="TThird"></typeparam>
+        /// <typeparam name="TFourth"></typeparam>
+        /// <typeparam name="TFifth"></typeparam>
+        /// <typeparam name="TSixth"></typeparam>
+        /// <typeparam name="TSeventh"></typeparam>
+        /// <typeparam name="TReturn"></typeparam>
+        /// <param name="cnn"></param>
+        /// <param name="sql"></param>
+        /// <param name="map"></param>
+        /// <param name="param"></param>
+        /// <param name="transaction"></param>
+        /// <param name="buffered"></param>
+        /// <param name="splitOn"></param>
+        /// <param name="commandTimeout"></param>
+        /// <param name="commandType"></param>
+        /// <returns></returns>
+        public static IEnumerable<TReturn> Query<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TSeventh, TReturn>(this IDbConnection cnn, string sql, Func<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TSeventh, TReturn> map, dynamic param = null, IDbTransaction transaction = null, bool buffered = true, string splitOn = "Id", int? commandTimeout = null, CommandType? commandType = null)
+        {
+            return MultiMap<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TSeventh, TReturn>(cnn, sql, map, param as object, transaction, buffered, splitOn, commandTimeout, commandType);
         }
 #endif
         partial class DontMap { }
-        static IEnumerable<TReturn> MultiMap<TFirst, TSecond, TThird, TFourth, TFifth, TReturn>(
+        static IEnumerable<TReturn> MultiMap<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TSeventh, TReturn>(
             this IDbConnection cnn, string sql, object map, object param, IDbTransaction transaction, bool buffered, string splitOn, int? commandTimeout, CommandType? commandType)
         {
-            var results = MultiMapImpl<TFirst, TSecond, TThird, TFourth, TFifth, TReturn>(cnn, sql, map, param, transaction, splitOn, commandTimeout, commandType, null, null);
+            var results = MultiMapImpl<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TSeventh, TReturn>(cnn, sql, map, param, transaction, splitOn, commandTimeout, commandType, null, null);
             return buffered ? results.ToList() : results;
         }
 
-
-        static IEnumerable<TReturn> MultiMapImpl<TFirst, TSecond, TThird, TFourth, TFifth, TReturn>(this IDbConnection cnn, string sql, object map, object param, IDbTransaction transaction, string splitOn, int? commandTimeout, CommandType? commandType, IDataReader reader, Identity identity)
+         
+        static IEnumerable<TReturn> MultiMapImpl<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TSeventh, TReturn>(this IDbConnection cnn, string sql, object map, object param, IDbTransaction transaction, string splitOn, int? commandTimeout, CommandType? commandType, IDataReader reader, Identity identity)
         {
-            identity = identity ?? new Identity(sql, commandType, cnn, typeof(TFirst), (object)param == null ? null : ((object)param).GetType(), new[] { typeof(TFirst), typeof(TSecond), typeof(TThird), typeof(TFourth), typeof(TFifth) });
+            identity = identity ?? new Identity(sql, commandType, cnn, typeof(TFirst), (object)param == null ? null : ((object)param).GetType(), new[] { typeof(TFirst), typeof(TSecond), typeof(TThird), typeof(TFourth), typeof(TFifth), typeof(TSixth), typeof(TSeventh) });
             CacheInfo cinfo = GetCacheInfo(identity);
 
             IDbCommand ownedCommand = null;
             IDataReader ownedReader = null;
 
+            bool wasClosed = cnn != null && cnn.State == ConnectionState.Closed;
             try
             {
                 if (reader == null)
                 {
                     ownedCommand = SetupCommand(cnn, transaction, sql, cinfo.ParamReader, (object)param, commandTimeout, commandType);
+                    if (wasClosed) cnn.Open();
                     ownedReader = ownedCommand.ExecuteReader();
                     reader = ownedReader;
                 }
@@ -1017,13 +1089,13 @@ this IDbConnection cnn, string sql, Func<TFirst, TSecond, TThird, TFourth, TRetu
                 int hash = GetColumnHash(reader);
                 if ((deserializer = cinfo.Deserializer).Func == null || (otherDeserializers = cinfo.OtherDeserializers) == null || hash != deserializer.Hash)
                 {
-                    var deserializers = GenerateDeserializers(new Type[] { typeof(TFirst), typeof(TSecond), typeof(TThird), typeof(TFourth), typeof(TFifth) }, splitOn, reader);
+                    var deserializers = GenerateDeserializers(new Type[] { typeof(TFirst), typeof(TSecond), typeof(TThird), typeof(TFourth), typeof(TFifth), typeof(TSixth), typeof(TSeventh) }, splitOn, reader);
                     deserializer = cinfo.Deserializer = new DeserializerState(hash, deserializers[0]);
                     otherDeserializers = cinfo.OtherDeserializers = deserializers.Skip(1).ToArray();
                     SetQueryCache(identity, cinfo);
                 }
 
-                Func<IDataReader, TReturn> mapIt = GenerateMapper<TFirst, TSecond, TThird, TFourth, TFifth, TReturn>(deserializer.Func, otherDeserializers, map);
+                Func<IDataReader, TReturn> mapIt = GenerateMapper<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TSeventh, TReturn>(deserializer.Func, otherDeserializers, map);
 
                 if (mapIt != null)
                 {
@@ -1048,11 +1120,12 @@ this IDbConnection cnn, string sql, Func<TFirst, TSecond, TThird, TFourth, TRetu
                     {
                         ownedCommand.Dispose();
                     }
+                    if (wasClosed) cnn.Close();
                 }
             }
         }
 
-        private static Func<IDataReader, TReturn> GenerateMapper<TFirst, TSecond, TThird, TFourth, TFifth, TReturn>(Func<IDataReader, object> deserializer, Func<IDataReader, object>[] otherDeserializers, object map)
+        private static Func<IDataReader, TReturn> GenerateMapper<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TSeventh, TReturn>(Func<IDataReader, object> deserializer, Func<IDataReader, object>[] otherDeserializers, object map)
         {
             switch (otherDeserializers.Length)
             {
@@ -1065,6 +1138,10 @@ this IDbConnection cnn, string sql, Func<TFirst, TSecond, TThird, TFourth, TRetu
 #if !CSHARP30
                 case 4:
                     return r => ((Func<TFirst, TSecond, TThird, TFourth, TFifth, TReturn>)map)((TFirst)deserializer(r), (TSecond)otherDeserializers[0](r), (TThird)otherDeserializers[1](r), (TFourth)otherDeserializers[2](r), (TFifth)otherDeserializers[3](r));
+                case 5:
+                    return r => ((Func<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TReturn>)map)((TFirst)deserializer(r), (TSecond)otherDeserializers[0](r), (TThird)otherDeserializers[1](r), (TFourth)otherDeserializers[2](r), (TFifth)otherDeserializers[3](r), (TSixth)otherDeserializers[4](r));
+                case 6:
+                    return r => ((Func<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TSeventh, TReturn>)map)((TFirst)deserializer(r), (TSecond)otherDeserializers[0](r), (TThird)otherDeserializers[1](r), (TFourth)otherDeserializers[2](r), (TFifth)otherDeserializers[3](r), (TSixth)otherDeserializers[4](r), (TSeventh)otherDeserializers[5](r));
 #endif
                 default:
                     throw new NotSupportedException();
@@ -1204,7 +1281,7 @@ this IDbConnection cnn, string sql, Func<TFirst, TSecond, TThird, TFourth, TRetu
         }
 
 #if !CSHARP30
-        sealed partial class DapperTable
+        private sealed partial class DapperTable
         {
             string[] fieldNames;
             readonly Dictionary<string, int> fieldNameLookup;
@@ -1236,6 +1313,7 @@ this IDbConnection cnn, string sql, Func<TFirst, TSecond, TThird, TFourth, TRetu
                 if (fieldNameLookup.ContainsKey(name)) throw new InvalidOperationException("Field already exists: " + name);
                 int oldLen = fieldNames.Length;
                 Array.Resize(ref fieldNames, oldLen + 1); // yes, this is sub-optimal, but this is not the expected common case
+                fieldNames[oldLen] = name;
                 fieldNameLookup[name] = oldLen;
                 return oldLen;
             }
@@ -1252,7 +1330,7 @@ this IDbConnection cnn, string sql, Func<TFirst, TSecond, TThird, TFourth, TRetu
         sealed partial class DapperRowMetaObject : System.Dynamic.DynamicMetaObject
         {
             static readonly MethodInfo getValueMethod = typeof(IDictionary<string, object>).GetProperty("Item").GetGetMethod();
-            static readonly MethodInfo setValueMethod = typeof(DapperRow).GetMethod("SetValue");
+            static readonly MethodInfo setValueMethod = typeof(DapperRow).GetMethod("SetValue", new Type[] { typeof(string), typeof(object) });
 
             public DapperRowMetaObject(
                 System.Linq.Expressions.Expression expression,
@@ -1298,6 +1376,19 @@ this IDbConnection cnn, string sql, Func<TFirst, TSecond, TThird, TFourth, TRetu
                 return callMethod;
             }
 
+            // Needed for Visual basic dynamic support
+            public override System.Dynamic.DynamicMetaObject BindInvokeMember(System.Dynamic.InvokeMemberBinder binder, System.Dynamic.DynamicMetaObject[] args)
+            {
+                var parameters = new System.Linq.Expressions.Expression[]
+                                     {
+                                         System.Linq.Expressions.Expression.Constant(binder.Name)
+                                     };
+
+                var callMethod = CallMethod(getValueMethod, parameters);
+
+                return callMethod;
+            }
+
             public override System.Dynamic.DynamicMetaObject BindSetMember(System.Dynamic.SetMemberBinder binder, System.Dynamic.DynamicMetaObject value)
             {
                 var parameters = new System.Linq.Expressions.Expression[]
@@ -1312,7 +1403,7 @@ this IDbConnection cnn, string sql, Func<TFirst, TSecond, TThird, TFourth, TRetu
             }
         }
 
-        sealed partial class DapperRow
+        private sealed partial class DapperRow
             : System.Dynamic.IDynamicMetaObjectProvider
             , IDictionary<string, object>
         {
@@ -1458,8 +1549,7 @@ this IDbConnection cnn, string sql, Func<TFirst, TSecond, TThird, TFourth, TRetu
 
             void IDictionary<string, object>.Add(string key, object value)
             {
-                IDictionary<string, object> dic = this;
-                dic[key] = value;
+                SetValue(key, value, true);
             }
 
             bool IDictionary<string, object>.Remove(string key)
@@ -1473,9 +1563,14 @@ this IDbConnection cnn, string sql, Func<TFirst, TSecond, TThird, TFourth, TRetu
             object IDictionary<string, object>.this[string key]
             {
                 get { object val; TryGetValue(key, out val); return val; }
-                set { SetValue(key, value); }
+                set { SetValue(key, value, false); }
             }
+
             public object SetValue(string key, object value)
+            {
+                return SetValue(key, value, false);
+            }
+            private object SetValue(string key, object value, bool isAdd)
             {
                 if (key == null) throw new ArgumentNullException("key");
                 int index = table.IndexOfName(key);
@@ -1483,10 +1578,21 @@ this IDbConnection cnn, string sql, Func<TFirst, TSecond, TThird, TFourth, TRetu
                 {
                     index = table.AddField(key);
                 }
-                if (values.Length <= index)
-                {   // we'll assume they're doing lots of things, and
+                else if (isAdd && index < values.Length && !(values[index] is DeadValue))
+                {
+                    // then semantically, this value already exists
+                    throw new ArgumentException("An item with the same key has already been added", "key");
+                }
+                int oldLength = values.Length;
+                if (oldLength <= index)
+                {
+                    // we'll assume they're doing lots of things, and
                     // grow it to the full width of the table
                     Array.Resize(ref values, table.FieldCount);
+                    for (int i = oldLength; i < values.Length; i++)
+                    {
+                        values[i] = DeadValue.Default;
+                    }
                 }
                 return values[index] = value;
             }
@@ -1519,7 +1625,7 @@ this IDbConnection cnn, string sql, Func<TFirst, TSecond, TThird, TFourth, TRetu
                 throw new ArgumentException("When using the multi-mapping APIs ensure you set the splitOn param if you have keys other than Id", "splitOn");
             }
 
-            var effectiveFieldCount = fieldCount - startBound;
+            var effectiveFieldCount = Math.Min(fieldCount - startBound, length);
 
             DapperTable table = null;
 
@@ -1550,13 +1656,16 @@ this IDbConnection cnn, string sql, Func<TFirst, TSecond, TThird, TFourth, TRetu
                     if (startBound == 0)
                     {
                         r.GetValues(values);
+                        for (int i = 0; i < values.Length; i++)
+                            if (values[i] is DBNull) values[i] = null;
                     }
                     else
                     {
                         var begin = returnNullIfFirstMissing ? 1 : 0;
                         for (var iter = begin; iter < effectiveFieldCount; ++iter)
                         {
-                            values[iter] = r.GetValue(iter + startBound);
+                            object obj = r.GetValue(iter + startBound);
+                            values[iter] = obj is DBNull ? null : obj;
                         }
                     }
                     return new DapperRow(table, values);
@@ -1757,13 +1866,13 @@ this IDbConnection cnn, string sql, Func<TFirst, TSecond, TThird, TFourth, TRetu
                         continue;
                     }
                 }
-                if (prop.PropertyType == typeof(DbString))
+                if (typeof(ICustomQueryParameter).IsAssignableFrom(prop.PropertyType))
                 {
                     il.Emit(OpCodes.Ldloc_0); // stack is now [parameters] [typed-param]
                     il.Emit(OpCodes.Callvirt, prop.GetGetMethod()); // stack is [parameters] [dbstring]
                     il.Emit(OpCodes.Ldarg_0); // stack is now [parameters] [dbstring] [command]
                     il.Emit(OpCodes.Ldstr, prop.Name); // stack is now [parameters] [dbstring] [command] [name]
-                    il.EmitCall(OpCodes.Callvirt, typeof(DbString).GetMethod("AddParameter"), null); // stack is now [parameters]
+                    il.EmitCall(OpCodes.Callvirt, prop.PropertyType.GetMethod("AddParameter"), null); // stack is now [parameters]
                     continue;
                 }
                 DbType dbType = LookupDbType(prop.PropertyType, prop.Name);
@@ -2474,6 +2583,20 @@ Type type, IDataReader reader, int startBound = 0, int length = -1, bool returnN
             }
         }
 
+
+        /// <summary>
+        /// How should connection strings be compared for equivalence? Defaults to StringComparer.Ordinal.
+        /// Providing a custom implementation can be useful for allowing multi-tenancy databases with identical
+        /// schema to share startegies. Note that usual equivalence rules apply: any equivalent connection strings
+        /// <b>MUST</b> yield the same hash-code.
+        /// </summary>
+        public static IEqualityComparer<string> ConnectionStringComparer
+        {
+            get { return connectionStringComparer; }
+            set { connectionStringComparer = value ?? StringComparer.Ordinal; }
+        }
+        private static IEqualityComparer<string> connectionStringComparer = StringComparer.Ordinal;
+
         /// <summary>
         /// The grid reader provides interfaces for reading multiple result sets from a Dapper query 
         /// </summary>
@@ -2536,18 +2659,20 @@ Type type, IDataReader reader, int startBound = 0, int length = -1, bool returnN
                 return buffered ? result.ToList() : result;
             }
 
-            private IEnumerable<TReturn> MultiReadInternal<TFirst, TSecond, TThird, TFourth, TFifth, TReturn>(object func, string splitOn)
+            private IEnumerable<TReturn> MultiReadInternal<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TSeventh, TReturn>(object func, string splitOn)
             {
                 var identity = this.identity.ForGrid(typeof(TReturn), new Type[] { 
                     typeof(TFirst), 
                     typeof(TSecond),
                     typeof(TThird),
                     typeof(TFourth),
-                    typeof(TFifth)
+                    typeof(TFifth),
+                    typeof(TSixth),
+                    typeof(TSeventh)
                 }, gridIndex);
                 try
                 {
-                    foreach (var r in SqlMapper.MultiMapImpl<TFirst, TSecond, TThird, TFourth, TFifth, TReturn>(null, null, func, null, null, splitOn, null, null, reader, identity))
+                    foreach (var r in SqlMapper.MultiMapImpl<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TSeventh, TReturn>(null, null, func, null, null, splitOn, null, null, reader, identity))
                     {
                         yield return r;
                     }
@@ -2576,7 +2701,7 @@ Type type, IDataReader reader, int startBound = 0, int length = -1, bool returnN
             public IEnumerable<TReturn> Read<TFirst, TSecond, TReturn>(Func<TFirst, TSecond, TReturn> func, string splitOn = "id", bool buffered = true)
 #endif
             {
-                var result = MultiReadInternal<TFirst, TSecond, DontMap, DontMap, DontMap, TReturn>(func, splitOn);
+                var result = MultiReadInternal<TFirst, TSecond, DontMap, DontMap, DontMap, DontMap, DontMap, TReturn>(func, splitOn);
                 return buffered ? result.ToList() : result;
             }
 
@@ -2598,7 +2723,7 @@ Type type, IDataReader reader, int startBound = 0, int length = -1, bool returnN
             public IEnumerable<TReturn> Read<TFirst, TSecond, TThird, TReturn>(Func<TFirst, TSecond, TThird, TReturn> func, string splitOn = "id", bool buffered = true)
 #endif
             {
-                var result = MultiReadInternal<TFirst, TSecond, TThird, DontMap, DontMap, TReturn>(func, splitOn);
+                var result = MultiReadInternal<TFirst, TSecond, TThird, DontMap, DontMap, DontMap, DontMap, TReturn>(func, splitOn);
                 return buffered ? result.ToList() : result;
             }
 
@@ -2621,7 +2746,7 @@ Type type, IDataReader reader, int startBound = 0, int length = -1, bool returnN
             public IEnumerable<TReturn> Read<TFirst, TSecond, TThird, TFourth, TReturn>(Func<TFirst, TSecond, TThird, TFourth, TReturn> func, string splitOn = "id", bool buffered = true)
 #endif
             {
-                var result = MultiReadInternal<TFirst, TSecond, TThird, TFourth, DontMap, TReturn>(func, splitOn);
+                var result = MultiReadInternal<TFirst, TSecond, TThird, TFourth, DontMap, DontMap, DontMap, TReturn>(func, splitOn);
                 return buffered ? result.ToList() : result;
             }
 
@@ -2633,7 +2758,23 @@ Type type, IDataReader reader, int startBound = 0, int length = -1, bool returnN
             /// </summary>
             public IEnumerable<TReturn> Read<TFirst, TSecond, TThird, TFourth, TFifth, TReturn>(Func<TFirst, TSecond, TThird, TFourth, TFifth, TReturn> func, string splitOn = "id", bool buffered = true)
             {
-                var result = MultiReadInternal<TFirst, TSecond, TThird, TFourth, TFifth, TReturn>(func, splitOn);
+                var result = MultiReadInternal<TFirst, TSecond, TThird, TFourth, TFifth, DontMap, DontMap, TReturn>(func, splitOn);
+                return buffered ? result.ToList() : result;
+            }
+            /// <summary>
+            /// Read multiple objects from a single record set on the grid
+            /// </summary>
+            public IEnumerable<TReturn> Read<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TReturn>(Func<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TReturn> func, string splitOn = "id", bool buffered = true)
+            {
+                var result = MultiReadInternal<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, DontMap, TReturn>(func, splitOn);
+                return buffered ? result.ToList() : result;
+            }
+            /// <summary>
+            /// Read multiple objects from a single record set on the grid
+            /// </summary>
+            public IEnumerable<TReturn> Read<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TSeventh, TReturn>(Func<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TSeventh, TReturn> func, string splitOn = "id", bool buffered = true)
+            {
+                var result = MultiReadInternal<TFirst, TSecond, TThird, TFourth, TFifth, TSixth, TSeventh, TReturn>(func, splitOn);
                 return buffered ? result.ToList() : result;
             }
 #endif
@@ -2949,7 +3090,7 @@ string name, object value = null, DbType? dbType = null, ParameterDirection? dir
     /// <summary>
     /// This class represents a SQL string, it can be used if you need to denote your parameter is a Char vs VarChar vs nVarChar vs nChar
     /// </summary>
-    sealed partial class DbString
+    sealed partial class DbString : Dapper.SqlMapper.ICustomQueryParameter
     {
         /// <summary>
         /// Create a new DbString
