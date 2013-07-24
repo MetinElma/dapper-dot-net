@@ -50,6 +50,11 @@ namespace Dapper
                     tableName = tableName ?? database.DetermineTableName<T>(likelyTableName);
                     return tableName;
                 }
+
+                set
+                {
+                    tableName = value;
+                }
             }
 
             /// <summary>
